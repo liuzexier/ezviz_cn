@@ -10,7 +10,7 @@
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
-      "mfa_required": "2FA enabled on account, please disable and retry"
+      "mfa_required": "Verification code required. Check the SMS or security message sent by EZVIZ."
     },
     "flow_title": "{serial}",
     "step": {
@@ -46,6 +46,13 @@
         },
         "description": "Manually specify your region URL. China mainland uses api.ys7.com.",
         "title": "Connect to custom EZVIZ CN URL"
+      },
+      "mfa": {
+        "data": {
+          "sms_code": "Verification code"
+        },
+        "description": "Enter the EZVIZ verification code sent to your account, then submit again.",
+        "title": "Verify EZVIZ CN login"
       }
     }
   },

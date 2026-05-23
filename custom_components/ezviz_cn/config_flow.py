@@ -53,6 +53,7 @@ DEFAULT_OPTIONS = {
     CONF_FFMPEG_ARGUMENTS: DEFAULT_FFMPEG_ARGUMENTS,
     CONF_TIMEOUT: DEFAULT_TIMEOUT,
 }
+CONF_SMS_CODE = "sms_code"
 
 
 def _validate_and_create_auth(data: dict) -> dict[str, Any]:
@@ -67,7 +68,7 @@ def _validate_and_create_auth(data: dict) -> dict[str, Any]:
         data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
     )
 
-    ezviz_token = ezviz_client.login()
+    ezviz_token = ezviz_client.login(data.get(CONF_SMS_CODE))
 
     return {
         CONF_SESSION_ID: ezviz_token[CONF_SESSION_ID],
@@ -95,7 +96,110 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
     ip_address: str
     username: str | None
     password: str | None
+    auth_input: dict[str, Any] | None = None
+    reauth_entry: EzvizConfigEntry | None = None
     unique_id: str
+
+    async def _async_validate_cloud_auth(
+        self,
+        user_input: dict[str, Any],
+    ) -> ConfigFlowResult:
+        """Validate cloud auth input and create or update a config entry."""
+        try:
+            auth_data = await self.hass.async_add_executor_job(
+                _validate_and_create_auth, user_input
+            )
+
+        except InvalidURL:
+            return self.async_show_cloud_auth_form("invalid_host")
+
+        except InvalidHost:
+            return self.async_show_cloud_auth_form("cannot_connect")
+
+        except EzvizAuthVerificationCode:
+            self.auth_input = dict(user_input)
+            return await self.async_step_mfa()
+
+        except PyEzvizError:
+            if CONF_SMS_CODE in user_input:
+                return self.async_show_mfa_form("invalid_auth")
+            return self.async_show_cloud_auth_form("invalid_auth")
+
+        except Exception:
+            _LOGGER.exception("Unexpected exception")
+            return self.async_abort(reason="unknown")
+
+        if self.reauth_entry is not None:
+            return self.async_update_reload_and_abort(
+                self.reauth_entry,
+                data=auth_data,
+            )
+
+        return self.async_create_entry(
+            title=user_input[CONF_USERNAME],
+            data=auth_data,
+            options=DEFAULT_OPTIONS,
+        )
+
+    @callback
+    def async_show_cloud_auth_form(
+        self,
+        error: str,
+    ) -> ConfigFlowResult:
+        """Redisplay the current cloud auth form with an error."""
+        errors = {"base": error}
+        if self.reauth_entry is not None:
+            data_schema = vol.Schema(
+                {
+                    vol.Required(
+                        CONF_USERNAME, default=self.reauth_entry.title
+                    ): vol.In([self.reauth_entry.title]),
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            )
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=data_schema,
+                errors=errors,
+            )
+
+        if self.auth_input and self.auth_input.get(CONF_URL) == CONF_CUSTOMIZE:
+            return self.async_show_form(
+                step_id="user_custom_url",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_URL, default=CHINA_URL): str,
+                    }
+                ),
+                errors=errors,
+            )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_USERNAME): str,
+                    vol.Required(CONF_PASSWORD): str,
+                    vol.Required(CONF_URL, default=CHINA_URL): vol.In(
+                        [CHINA_URL, EU_URL, RUSSIA_URL, CONF_CUSTOMIZE]
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    @callback
+    def async_show_mfa_form(self, error: str | None = None) -> ConfigFlowResult:
+        """Show the MFA verification code form."""
+        return self.async_show_form(
+            step_id="mfa",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_SMS_CODE): int,
+                }
+            ),
+            errors={"base": error} if error else {},
+        )
 
     async def _validate_and_create_camera_rtsp(self, data: dict) -> ConfigFlowResult:
         """Try DESCRIBE on RTSP camera with credentials."""
@@ -163,44 +267,18 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="already_configured_account")
 
         errors = {}
-        auth_data = {}
 
         if user_input is not None:
             await self.async_set_unique_id(user_input[CONF_USERNAME])
             self._abort_if_unique_id_configured()
+            self.auth_input = dict(user_input)
 
             if user_input[CONF_URL] == CONF_CUSTOMIZE:
                 self.username = user_input[CONF_USERNAME]
                 self.password = user_input[CONF_PASSWORD]
                 return await self.async_step_user_custom_url()
 
-            try:
-                auth_data = await self.hass.async_add_executor_job(
-                    _validate_and_create_auth, user_input
-                )
-
-            except InvalidURL:
-                errors["base"] = "invalid_host"
-
-            except InvalidHost:
-                errors["base"] = "cannot_connect"
-
-            except EzvizAuthVerificationCode:
-                errors["base"] = "mfa_required"
-
-            except PyEzvizError:
-                errors["base"] = "invalid_auth"
-
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                return self.async_abort(reason="unknown")
-
-            else:
-                return self.async_create_entry(
-                    title=user_input[CONF_USERNAME],
-                    data=auth_data,
-                    options=DEFAULT_OPTIONS,
-                )
+            return await self._async_validate_cloud_auth(user_input)
 
         data_schema = vol.Schema(
             {
@@ -221,39 +299,13 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle a flow initiated by the user for custom region url."""
         errors = {}
-        auth_data = {}
 
         if user_input is not None:
             user_input[CONF_USERNAME] = self.username
             user_input[CONF_PASSWORD] = self.password
+            self.auth_input = dict(user_input)
 
-            try:
-                auth_data = await self.hass.async_add_executor_job(
-                    _validate_and_create_auth, user_input
-                )
-
-            except InvalidURL:
-                errors["base"] = "invalid_host"
-
-            except InvalidHost:
-                errors["base"] = "cannot_connect"
-
-            except EzvizAuthVerificationCode:
-                errors["base"] = "mfa_required"
-
-            except PyEzvizError:
-                errors["base"] = "invalid_auth"
-
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                return self.async_abort(reason="unknown")
-
-            else:
-                return self.async_create_entry(
-                    title=user_input[CONF_USERNAME],
-                    data=auth_data,
-                    options=DEFAULT_OPTIONS,
-                )
+            return await self._async_validate_cloud_auth(user_input)
 
         data_schema_custom_url = vol.Schema(
             {
@@ -264,6 +316,20 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user_custom_url", data_schema=data_schema_custom_url, errors=errors
         )
+
+    async def async_step_mfa(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle the MFA verification code step."""
+        if self.auth_input is None:
+            return await self.async_step_user()
+
+        if user_input is not None:
+            auth_input = dict(self.auth_input)
+            auth_input[CONF_SMS_CODE] = user_input[CONF_SMS_CODE]
+            return await self._async_validate_cloud_auth(auth_input)
+
+        return self.async_show_mfa_form()
 
     async def async_step_integration_discovery(
         self, discovery_info: dict[str, Any]
@@ -334,7 +400,6 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle a Confirm flow for reauthentication with password."""
-        auth_data = {}
         errors = {}
         entry = None
 
@@ -342,36 +407,15 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
             if item.data.get(CONF_TYPE) == ATTR_TYPE_CLOUD:
                 self.context["title_placeholders"] = {ATTR_SERIAL: item.title}
                 entry = await self.async_set_unique_id(item.title)
+                self.reauth_entry = entry
 
         if not entry:
             return self.async_abort(reason="ezviz_cloud_account_missing")
 
         if user_input is not None:
             user_input[CONF_URL] = entry.data[CONF_URL]
-
-            try:
-                auth_data = await self.hass.async_add_executor_job(
-                    _validate_and_create_auth, user_input
-                )
-
-            except (InvalidHost, InvalidURL):
-                errors["base"] = "invalid_host"
-
-            except EzvizAuthVerificationCode:
-                errors["base"] = "mfa_required"
-
-            except (PyEzvizError, AuthTestResultFailed):
-                errors["base"] = "invalid_auth"
-
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                return self.async_abort(reason="unknown")
-
-            else:
-                return self.async_update_reload_and_abort(
-                    entry,
-                    data=auth_data,
-                )
+            self.auth_input = dict(user_input)
+            return await self._async_validate_cloud_auth(user_input)
 
         data_schema = vol.Schema(
             {
