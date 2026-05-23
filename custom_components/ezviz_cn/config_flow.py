@@ -195,7 +195,7 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="mfa",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_SMS_CODE): int,
+                    vol.Required(CONF_SMS_CODE): str,
                 }
             ),
             errors={"base": error} if error else {},
