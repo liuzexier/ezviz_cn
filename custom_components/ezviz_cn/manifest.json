@@ -1,0 +1,14 @@
+{
+  "domain": "ezviz_cn",
+  "name": "EZVIZ CN",
+  "codeowners": ["@liuzexier"],
+  "config_flow": true,
+  "dependencies": ["ffmpeg"],
+  "documentation": "https://github.com/liuzexier/pyEzvizApiCN",
+  "iot_class": "cloud_polling",
+  "loggers": ["paho_mqtt", "pyezvizapi"],
+  "requirements": [
+    "pyezvizapi @ git+https://github.com/liuzexier/pyEzvizApiCN.git@main"
+  ],
+  "version": "0.1.0"
+}
