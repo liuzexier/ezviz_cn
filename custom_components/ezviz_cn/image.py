@@ -49,6 +49,7 @@ class EzvizLastMotion(EzvizEntity, ImageEntity):
         EzvizEntity.__init__(self, coordinator, serial)
         ImageEntity.__init__(self, hass)
         self._attr_unique_id = f"{serial}_{IMAGE_TYPE.key}"
+        self._attr_name = "最近报警图片"
         self.entity_description = IMAGE_TYPE
         self._attr_image_url = self.data["last_alarm_pic"]
         self._attr_image_last_updated = dt_util.parse_datetime(

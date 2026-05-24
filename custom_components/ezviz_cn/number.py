@@ -44,6 +44,9 @@ NUMBER_TYPE = EzvizNumberEntityDescription(
     supported_ext=str(SupportExt.SupportSensibilityAdjust.value),
     supported_ext_value=["1", "3"],
 )
+NUMBER_NAMES = {
+    "detection_sensibility": "检测灵敏度",
+}
 
 
 async def async_setup_entry(
@@ -78,6 +81,7 @@ class EzvizNumber(EzvizBaseEntity, NumberEntity):
         self.sensitivity_type = 3 if value == "3" else 0
         self._attr_native_max_value = 100 if value == "3" else 6
         self._attr_unique_id = f"{serial}_{NUMBER_TYPE.key}"
+        self._attr_name = NUMBER_NAMES[NUMBER_TYPE.key]
         self.entity_description = NUMBER_TYPE
         self.config_entry_id = config_entry_id
         self.sensor_value: int | None = None

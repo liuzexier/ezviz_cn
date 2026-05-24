@@ -33,6 +33,12 @@ PTZ_ANY_CAPABILITIES = (
     str(SupportExt.SupportPtzNew.value),
 )
 PTZ_MODEL_HINTS = ("c6", "cp1")
+BUTTON_NAMES = {
+    "ptz_up": "云台上移",
+    "ptz_down": "云台下移",
+    "ptz_left": "云台左移",
+    "ptz_right": "云台右移",
+}
 
 
 BUTTON_ENTITIES = (
@@ -148,6 +154,7 @@ class EzvizButtonEntity(EzvizEntity, ButtonEntity):
         """Initialize the button."""
         super().__init__(coordinator, serial)
         self._attr_unique_id = f"{serial}_{description.key}"
+        self._attr_name = BUTTON_NAMES.get(description.key, description.key)
         self.entity_description = description
 
     def press(self) -> None:

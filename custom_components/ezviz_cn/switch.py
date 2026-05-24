@@ -24,6 +24,22 @@ class EzvizSwitchEntityDescription(SwitchEntityDescription):
     """Describe a EZVIZ switch."""
 
 
+SWITCH_NAMES = {
+    3: "状态灯",
+    7: "隐私遮蔽",
+    10: "红外灯",
+    21: "休眠",
+    22: "音频",
+    25: "移动追踪",
+    29: "全天录像",
+    32: "自动休眠",
+    301: "移动闪灯",
+    305: "PIR 移动触发灯",
+    306: "防拆报警",
+    650: "跟随移动",
+}
+
+
 SWITCH_TYPES: dict[int, EzvizSwitchEntityDescription] = {
     3: EzvizSwitchEntityDescription(
         key="3",
@@ -116,6 +132,7 @@ class EzvizSwitch(EzvizEntity, SwitchEntity):
         self._attr_unique_id = (
             f"{serial}_{self._camera_name}.{DeviceSwitchType(switch_number).name}"
         )
+        self._attr_name = SWITCH_NAMES.get(switch_number, str(switch_number))
         self.entity_description = SWITCH_TYPES[switch_number]
         self._attr_is_on = self.data["switches"][switch_number]
 

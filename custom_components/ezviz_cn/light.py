@@ -57,6 +57,7 @@ class EzvizLight(EzvizEntity, LightEntity):
             == DeviceCatagories.BATTERY_CAMERA_DEVICE_CATEGORY.value
         )
         self._attr_unique_id = f"{serial}_Light"
+        self._attr_name = "补光灯"
         self._attr_is_on = self.data["switches"][DeviceSwitchType.ALARM_LIGHT.value]
         self._attr_brightness = round(
             percentage_to_ranged_value(

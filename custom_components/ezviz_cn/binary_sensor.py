@@ -27,6 +27,11 @@ BINARY_SENSOR_TYPES: dict[str, BinarySensorEntityDescription] = {
         translation_key="encrypted",
     ),
 }
+BINARY_SENSOR_NAMES = {
+    "Motion_Trigger": "运动检测",
+    "alarm_schedules_enabled": "告警计划",
+    "encrypted": "视频加密",
+}
 
 
 async def async_setup_entry(
@@ -61,6 +66,7 @@ class EzvizBinarySensor(EzvizEntity, BinarySensorEntity):
         super().__init__(coordinator, serial)
         self._sensor_name = binary_sensor
         self._attr_unique_id = f"{serial}_{self._camera_name}.{binary_sensor}"
+        self._attr_name = BINARY_SENSOR_NAMES.get(binary_sensor, binary_sensor)
         self.entity_description = BINARY_SENSOR_TYPES[binary_sensor]
 
     @property

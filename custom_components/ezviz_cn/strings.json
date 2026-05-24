@@ -58,138 +58,138 @@
     }
   },
   "entity": {
-    "binary_sensor": {
-      "alarm_schedules_enabled": {
-        "name": "Alarm schedules enabled"
-      },
-      "encrypted": {
-        "name": "Encryption"
-      }
-    },
-    "button": {
-      "ptz_down": {
-        "name": "PTZ down"
-      },
-      "ptz_left": {
-        "name": "PTZ left"
-      },
-      "ptz_right": {
-        "name": "PTZ right"
-      },
-      "ptz_up": {
-        "name": "PTZ up"
-      }
-    },
-    "image": {
-      "last_motion_image": {
-        "name": "Last motion image"
-      }
-    },
-    "light": {
-      "light": {
-        "name": "[%key:component::light::title%]"
-      }
-    },
-    "number": {
-      "detection_sensibility": {
-        "name": "Detection sensitivity"
-      }
-    },
-    "select": {
-      "alarm_sound_mode": {
-        "name": "Warning sound",
-        "state": {
-          "intensive": "Intensive",
-          "silent": "Silent",
-          "soft": "Soft"
+        "binary_sensor": {
+            "alarm_schedules_enabled": {
+                "name": "告警计划"
+            },
+            "encrypted": {
+                "name": "视频加密"
+            }
+        },
+        "button": {
+            "ptz_down": {
+                "name": "云台下移"
+            },
+            "ptz_left": {
+                "name": "云台左移"
+            },
+            "ptz_right": {
+                "name": "云台右移"
+            },
+            "ptz_up": {
+                "name": "云台上移"
+            }
+        },
+        "image": {
+            "last_motion_image": {
+                "name": "最近报警图片"
+            }
+        },
+        "light": {
+            "light": {
+                "name": "补光灯"
+            }
+        },
+        "number": {
+            "detection_sensibility": {
+                "name": "检测灵敏度"
+            }
+        },
+        "select": {
+            "alarm_sound_mode": {
+                "name": "报警声音",
+                "state": {
+                    "intensive": "强",
+                    "silent": "静音",
+                    "soft": "柔和"
+                }
+            },
+            "battery_camera_work_mode": {
+                "name": "电池工作模式",
+                "state": {
+                    "custom": "自定义",
+                    "high_performance": "高性能",
+                    "plugged_in": "插电",
+                    "power_save": "省电",
+                    "super_power_save": "超级省电"
+                }
+            }
+        },
+        "sensor": {
+            "alarm_sound_mod": {
+                "name": "报警声模式"
+            },
+            "last_alarm_pic": {
+                "name": "最近报警图片地址"
+            },
+            "last_alarm_time": {
+                "name": "最近报警时间"
+            },
+            "last_alarm_type_code": {
+                "name": "最近报警类型代码"
+            },
+            "last_alarm_type_name": {
+                "name": "最近报警类型"
+            },
+            "local_ip": {
+                "name": "本地 IP"
+            },
+            "pir_status": {
+                "name": "PIR 状态"
+            },
+            "seconds_last_trigger": {
+                "name": "距离上次触发秒数"
+            },
+            "supported_channels": {
+                "name": "通道数"
+            },
+            "wan_ip": {
+                "name": "公网 IP"
+            }
+        },
+        "siren": {
+            "siren": {
+                "name": "警笛"
+            }
+        },
+        "switch": {
+            "all_day_video_recording": {
+                "name": "全天录像"
+            },
+            "audio": {
+                "name": "音频"
+            },
+            "auto_sleep": {
+                "name": "自动休眠"
+            },
+            "flicker_light_on_movement": {
+                "name": "移动闪灯"
+            },
+            "follow_movement": {
+                "name": "跟随移动"
+            },
+            "infrared_light": {
+                "name": "红外灯"
+            },
+            "motion_tracking": {
+                "name": "移动追踪"
+            },
+            "pir_motion_activated_light": {
+                "name": "PIR 移动触发灯"
+            },
+            "privacy": {
+                "name": "隐私遮蔽"
+            },
+            "sleep": {
+                "name": "休眠"
+            },
+            "status_light": {
+                "name": "状态灯"
+            },
+            "tamper_alarm": {
+                "name": "防拆报警"
+            }
         }
-      },
-      "battery_camera_work_mode": {
-        "name": "Battery work mode",
-        "state": {
-          "custom": "Custom",
-          "high_performance": "High performance",
-          "plugged_in": "Plugged in",
-          "power_save": "Power save",
-          "super_power_save": "Super power saving"
-        }
-      }
-    },
-    "sensor": {
-      "alarm_sound_mod": {
-        "name": "Alarm sound level"
-      },
-      "last_alarm_pic": {
-        "name": "Last alarm picture URL"
-      },
-      "last_alarm_time": {
-        "name": "Last alarm time"
-      },
-      "last_alarm_type_code": {
-        "name": "Last alarm type code"
-      },
-      "last_alarm_type_name": {
-        "name": "Last alarm type name"
-      },
-      "local_ip": {
-        "name": "Local IP"
-      },
-      "pir_status": {
-        "name": "PIR status"
-      },
-      "seconds_last_trigger": {
-        "name": "Seconds since last trigger"
-      },
-      "supported_channels": {
-        "name": "Supported channels"
-      },
-      "wan_ip": {
-        "name": "WAN IP"
-      }
-    },
-    "siren": {
-      "siren": {
-        "name": "[%key:component::siren::title%]"
-      }
-    },
-    "switch": {
-      "all_day_video_recording": {
-        "name": "All day video recording"
-      },
-      "audio": {
-        "name": "Audio"
-      },
-      "auto_sleep": {
-        "name": "Auto sleep"
-      },
-      "flicker_light_on_movement": {
-        "name": "Flicker light on movement"
-      },
-      "follow_movement": {
-        "name": "Follow movement"
-      },
-      "infrared_light": {
-        "name": "Infrared light"
-      },
-      "motion_tracking": {
-        "name": "Motion tracking"
-      },
-      "pir_motion_activated_light": {
-        "name": "PIR motion activated light"
-      },
-      "privacy": {
-        "name": "Privacy"
-      },
-      "sleep": {
-        "name": "Sleep"
-      },
-      "status_light": {
-        "name": "Status light"
-      },
-      "tamper_alarm": {
-        "name": "Tamper alarm"
-      }
-    }
   },
   "options": {
     "step": {

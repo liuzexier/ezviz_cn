@@ -63,6 +63,7 @@ class EzvizSirenEntity(EzvizBaseEntity, SirenEntity, RestoreEntity):
         """Initialize the Siren."""
         super().__init__(coordinator, serial)
         self._attr_unique_id = f"{serial}_{description.key}"
+        self._attr_name = "警笛"
         self.entity_description = description
         self._attr_is_on = False
         self._delay_listener: Callable | None = None

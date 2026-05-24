@@ -65,6 +65,19 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
         translation_key="last_alarm_type_name",
     ),
 }
+SENSOR_NAMES = {
+    "battery_level": "电量",
+    "alarm_sound_mod": "报警声模式",
+    "last_alarm_time": "最近报警时间",
+    "Seconds_Last_Trigger": "距离上次触发秒数",
+    "last_alarm_pic": "最近报警图片",
+    "supported_channels": "通道数",
+    "local_ip": "本地 IP",
+    "wan_ip": "公网 IP",
+    "PIR_Status": "PIR 状态",
+    "last_alarm_type_code": "最近报警类型代码",
+    "last_alarm_type_name": "最近报警类型",
+}
 
 
 async def async_setup_entry(
@@ -96,6 +109,7 @@ class EzvizSensor(EzvizEntity, SensorEntity):
         super().__init__(coordinator, serial)
         self._sensor_name = sensor
         self._attr_unique_id = f"{serial}_{self._camera_name}.{sensor}"
+        self._attr_name = SENSOR_NAMES.get(sensor, sensor)
         self.entity_description = SENSOR_TYPES[sensor]
 
     @property

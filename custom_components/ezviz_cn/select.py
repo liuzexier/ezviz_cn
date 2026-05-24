@@ -105,6 +105,10 @@ BATTERY_WORK_MODE_SELECT_TYPE = EzvizSelectEntityDescription(
 )
 
 SELECT_TYPES = [ALARM_SOUND_MODE_SELECT_TYPE, BATTERY_WORK_MODE_SELECT_TYPE]
+SELECT_NAMES = {
+    "alarm_sound_mod": "报警声音",
+    "battery_camera_work_mode": "电池工作模式",
+}
 
 
 async def async_setup_entry(
@@ -149,6 +153,7 @@ class EzvizSelect(EzvizEntity, SelectEntity):
         """Initialize the select entity."""
         super().__init__(coordinator, serial)
         self._attr_unique_id = f"{serial}_{description.key}"
+        self._attr_name = SELECT_NAMES.get(description.key, description.key)
         self.entity_description = description
 
     @property

@@ -23,6 +23,9 @@ UPDATE_ENTITY_TYPES = UpdateEntityDescription(
     key="version",
     device_class=UpdateDeviceClass.FIRMWARE,
 )
+UPDATE_NAMES = {
+    "version": "固件",
+}
 
 
 async def async_setup_entry(
@@ -61,6 +64,7 @@ class EzvizUpdateEntity(EzvizEntity, UpdateEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, serial)
         self._attr_unique_id = f"{serial}_{sensor}"
+        self._attr_name = UPDATE_NAMES.get(sensor, sensor)
         self.entity_description = description
 
     @property
