@@ -207,38 +207,18 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
     async def _validate_and_create_camera_rtsp(self, data: dict) -> ConfigFlowResult:
         """Try DESCRIBE on RTSP camera with credentials."""
 
-        # Get EZVIZ cloud credentials from config entry
-        ezviz_token = {
-            CONF_SESSION_ID: None,
-            CONF_RFSESSION_ID: None,
-            "api_url": None,
-        }
-        ezviz_timeout = DEFAULT_TIMEOUT
+        cloud_account_present = False
 
         for item in self._async_current_entries():
             if item.data.get(CONF_TYPE) == ATTR_TYPE_CLOUD:
-                ezviz_token = {
-                    CONF_SESSION_ID: item.data.get(CONF_SESSION_ID),
-                    CONF_RFSESSION_ID: item.data.get(CONF_RFSESSION_ID),
-                    "api_url": item.data.get(CONF_URL),
-                }
-                ezviz_timeout = item.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+                cloud_account_present = item.data.get(CONF_SESSION_ID) is not None
+                break
 
         # Abort flow if user removed cloud account before adding camera.
-        if ezviz_token.get(CONF_SESSION_ID) is None:
+        if not cloud_account_present:
             return self.async_abort(reason="ezviz_cloud_account_missing")
 
-        ezviz_client = EzvizClient(token=ezviz_token, timeout=ezviz_timeout)
-
-        def _login_wake_and_test() -> None:
-            # Login to create EZVIZ API instance.
-            ezviz_client.login()
-            # Wake hibernating camera.
-            ezviz_client.get_detection_sensibility(data[ATTR_SERIAL])
-            # Attempt an authenticated RTSP DESCRIBE request.
-            _test_camera_rtsp_creds(data)
-
-        await self.hass.async_add_executor_job(_login_wake_and_test)
+        await self.hass.async_add_executor_job(_test_camera_rtsp_creds, data)
 
         return self.async_create_entry(
             title=data[ATTR_SERIAL],
