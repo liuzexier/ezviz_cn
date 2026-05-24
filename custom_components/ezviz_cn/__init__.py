@@ -3,13 +3,7 @@
 import logging
 
 from pyezvizapi.client import EzvizClient
-from pyezvizapi.exceptions import (
-    EzvizAuthTokenExpired,
-    EzvizAuthVerificationCode,
-    HTTPError,
-    InvalidURL,
-    PyEzvizError,
-)
+from pyezvizapi.exceptions import HTTPError, InvalidURL, PyEzvizError
 
 from homeassistant.const import CONF_TIMEOUT, CONF_TYPE, CONF_URL, Platform
 from homeassistant.core import HomeAssistant
@@ -76,21 +70,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: EzvizConfigEntry) -> boo
             timeout=entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
         )
 
-        try:
-            await hass.async_add_executor_job(ezviz_client.login)
-
-        except (EzvizAuthTokenExpired, EzvizAuthVerificationCode) as error:
-            raise ConfigEntryAuthFailed from error
-
-        except (InvalidURL, HTTPError, PyEzvizError) as error:
-            _LOGGER.error("Unable to connect to Ezviz service: %s", str(error))
-            raise ConfigEntryNotReady from error
-
         coordinator = EzvizDataUpdateCoordinator(
             hass, entry, api=ezviz_client, api_timeout=entry.options[CONF_TIMEOUT]
         )
 
-        await coordinator.async_config_entry_first_refresh()
+        try:
+            await coordinator.async_config_entry_first_refresh()
+        except (InvalidURL, HTTPError, PyEzvizError) as error:
+            _LOGGER.exception("Unable to connect to Ezviz service")
+            raise ConfigEntryNotReady from error
 
         entry.runtime_data = coordinator
 
