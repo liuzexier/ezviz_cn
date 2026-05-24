@@ -82,7 +82,10 @@ def _test_camera_rtsp_creds(data: dict) -> None:
     """Try DESCRIBE on RTSP camera with credentials."""
 
     test_rtsp = TestRTSPAuth(
-        data[CONF_IP_ADDRESS], data[CONF_USERNAME], data[CONF_PASSWORD]
+        data[CONF_IP_ADDRESS],
+        data[CONF_USERNAME],
+        data[CONF_PASSWORD],
+        data.get(CONF_FFMPEG_ARGUMENTS, DEFAULT_FFMPEG_ARGUMENTS),
     )
 
     test_rtsp.main()
@@ -244,7 +247,12 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_PASSWORD: data[CONF_PASSWORD],
                 CONF_TYPE: ATTR_TYPE_CAMERA,
             },
-            options=DEFAULT_OPTIONS,
+            options={
+                **DEFAULT_OPTIONS,
+                CONF_FFMPEG_ARGUMENTS: data.get(
+                    CONF_FFMPEG_ARGUMENTS, DEFAULT_FFMPEG_ARGUMENTS
+                ),
+            },
         )
 
     @staticmethod
@@ -376,6 +384,9 @@ class EzvizConfigFlow(ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(CONF_USERNAME, default=DEFAULT_CAMERA_USERNAME): str,
                 vol.Required(CONF_PASSWORD): str,
+                vol.Required(
+                    CONF_FFMPEG_ARGUMENTS, default=DEFAULT_FFMPEG_ARGUMENTS
+                ): str,
             }
         )
 
