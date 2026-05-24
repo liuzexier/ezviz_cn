@@ -32,7 +32,7 @@ PTZ_ANY_CAPABILITIES = (
     str(SupportExt.SupportPtzManualCtrl.value),
     str(SupportExt.SupportPtzNew.value),
 )
-PTZ_MODEL_HINTS = ("c6", "cp1")
+PTZ_MODEL_HINTS = ("c6", "c6c", "c6n", "c6w", "c8", "cp1", "h6c")
 BUTTON_NAMES = {
     "ptz_up": "云台上移",
     "ptz_down": "云台下移",
@@ -94,8 +94,13 @@ def _is_capability_enabled(value: Any) -> bool:
     return str(value).lower() in {"1", "true", "yes"}
 
 
-def _supports_button(support_ext: dict[str, Any], capability_ids: tuple[str, ...]) -> bool:
+def _supports_button(
+    support_ext: dict[str, Any] | None, capability_ids: tuple[str, ...]
+) -> bool:
     """Return whether any capability id required by a PTZ button is enabled."""
+    if not isinstance(support_ext, dict):
+        return False
+
     return any(
         _is_capability_enabled(support_ext.get(capability))
         for capability in capability_ids
@@ -104,18 +109,23 @@ def _supports_button(support_ext: dict[str, Any], capability_ids: tuple[str, ...
 
 def _looks_like_ptz_camera(camera_data: dict[str, Any]) -> bool:
     """Return whether model/name hints indicate an EZVIZ pan-tilt camera."""
-    name = str(camera_data.get("name", "")).lower()
-    sub_category = str(camera_data.get("device_sub_category", "")).lower()
-    return any(hint in name or hint in sub_category for hint in PTZ_MODEL_HINTS)
+    values = (
+        camera_data.get("name"),
+        camera_data.get("device_sub_category"),
+        camera_data.get("device_type"),
+        camera_data.get("device_model"),
+        camera_data.get("model"),
+    )
+    camera_text = " ".join(str(value).lower() for value in values if value)
+    return any(hint in camera_text for hint in PTZ_MODEL_HINTS)
 
 
 def _supports_ptz_button(
     camera_data: dict[str, Any], capability_ids: tuple[str, ...]
 ) -> bool:
     """Return whether a camera should expose a PTZ button."""
-    return _supports_button(camera_data.get("supportExt", {}), capability_ids) or (
-        _looks_like_ptz_camera(camera_data)
-        and any(capability in PTZ_ANY_CAPABILITIES for capability in capability_ids)
+    return _looks_like_ptz_camera(camera_data) or _supports_button(
+        camera_data.get("supportExt"), capability_ids
     )
 
 
