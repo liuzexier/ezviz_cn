@@ -24,7 +24,14 @@ class EzvizButtonEntityDescription(ButtonEntityDescription):
     """Describe a EZVIZ Button."""
 
     method: Callable[[EzvizClient, str, str], Any]
-    supported_ext: str
+    supported_exts: tuple[str, ...]
+
+
+PTZ_ANY_CAPABILITIES = (
+    str(SupportExt.SupportPtz.value),
+    str(SupportExt.SupportPtzManualCtrl.value),
+    str(SupportExt.SupportPtzNew.value),
+)
 
 
 BUTTON_ENTITIES = (
@@ -34,7 +41,10 @@ BUTTON_ENTITIES = (
         method=lambda pyezviz_client, serial, run: pyezviz_client.ptz_control(
             "UP", serial, run
         ),
-        supported_ext=str(SupportExt.SupportPtz.value),
+        supported_exts=(
+            *PTZ_ANY_CAPABILITIES,
+            str(SupportExt.SupportPtzTopBottom.value),
+        ),
     ),
     EzvizButtonEntityDescription(
         key="ptz_down",
@@ -42,7 +52,10 @@ BUTTON_ENTITIES = (
         method=lambda pyezviz_client, serial, run: pyezviz_client.ptz_control(
             "DOWN", serial, run
         ),
-        supported_ext=str(SupportExt.SupportPtz.value),
+        supported_exts=(
+            *PTZ_ANY_CAPABILITIES,
+            str(SupportExt.SupportPtzTopBottom.value),
+        ),
     ),
     EzvizButtonEntityDescription(
         key="ptz_left",
@@ -50,7 +63,10 @@ BUTTON_ENTITIES = (
         method=lambda pyezviz_client, serial, run: pyezviz_client.ptz_control(
             "LEFT", serial, run
         ),
-        supported_ext=str(SupportExt.SupportPtz.value),
+        supported_exts=(
+            *PTZ_ANY_CAPABILITIES,
+            str(SupportExt.SupportPtzLeftRight.value),
+        ),
     ),
     EzvizButtonEntityDescription(
         key="ptz_right",
@@ -58,9 +74,25 @@ BUTTON_ENTITIES = (
         method=lambda pyezviz_client, serial, run: pyezviz_client.ptz_control(
             "RIGHT", serial, run
         ),
-        supported_ext=str(SupportExt.SupportPtz.value),
+        supported_exts=(
+            *PTZ_ANY_CAPABILITIES,
+            str(SupportExt.SupportPtzLeftRight.value),
+        ),
     ),
 )
+
+
+def _is_capability_enabled(value: Any) -> bool:
+    """Return whether a supportExt value means enabled."""
+    return str(value).lower() in {"1", "true", "yes"}
+
+
+def _supports_button(support_ext: dict[str, Any], capability_ids: tuple[str, ...]) -> bool:
+    """Return whether any capability id required by a PTZ button is enabled."""
+    return any(
+        _is_capability_enabled(support_ext.get(capability))
+        for capability in capability_ids
+    )
 
 
 async def async_setup_entry(
@@ -71,17 +103,16 @@ async def async_setup_entry(
     """Set up EZVIZ button based on a config entry."""
     coordinator = entry.runtime_data
 
-    # Add button entities if supportExt value indicates PTZ capbility.
-    # Could be missing or "0" for unsupported.
-    # If present with value of "1" then add button entity.
+    # Add button entities if supportExt indicates PTZ capability.
 
     async_add_entities(
         EzvizButtonEntity(coordinator, camera, entity_description)
         for camera in coordinator.data
-        for capability, value in coordinator.data[camera]["supportExt"].items()
         for entity_description in BUTTON_ENTITIES
-        if capability == entity_description.supported_ext
-        if value == "1"
+        if _supports_button(
+            coordinator.data[camera].get("supportExt", {}),
+            entity_description.supported_exts,
+        )
     )
 
 
