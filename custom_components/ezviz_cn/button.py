@@ -32,6 +32,7 @@ PTZ_ANY_CAPABILITIES = (
     str(SupportExt.SupportPtzManualCtrl.value),
     str(SupportExt.SupportPtzNew.value),
 )
+PTZ_MODEL_HINTS = ("c6", "cp1")
 
 
 BUTTON_ENTITIES = (
@@ -95,6 +96,23 @@ def _supports_button(support_ext: dict[str, Any], capability_ids: tuple[str, ...
     )
 
 
+def _looks_like_ptz_camera(camera_data: dict[str, Any]) -> bool:
+    """Return whether model/name hints indicate an EZVIZ pan-tilt camera."""
+    name = str(camera_data.get("name", "")).lower()
+    sub_category = str(camera_data.get("device_sub_category", "")).lower()
+    return any(hint in name or hint in sub_category for hint in PTZ_MODEL_HINTS)
+
+
+def _supports_ptz_button(
+    camera_data: dict[str, Any], capability_ids: tuple[str, ...]
+) -> bool:
+    """Return whether a camera should expose a PTZ button."""
+    return _supports_button(camera_data.get("supportExt", {}), capability_ids) or (
+        _looks_like_ptz_camera(camera_data)
+        and any(capability in PTZ_ANY_CAPABILITIES for capability in capability_ids)
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: EzvizConfigEntry,
@@ -109,8 +127,8 @@ async def async_setup_entry(
         EzvizButtonEntity(coordinator, camera, entity_description)
         for camera in coordinator.data
         for entity_description in BUTTON_ENTITIES
-        if _supports_button(
-            coordinator.data[camera].get("supportExt", {}),
+        if _supports_ptz_button(
+            coordinator.data[camera],
             entity_description.supported_exts,
         )
     )

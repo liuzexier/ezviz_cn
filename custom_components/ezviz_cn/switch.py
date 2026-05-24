@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyezvizapi.constants import DeviceSwitchType, SupportExt
+from pyezvizapi.constants import DeviceSwitchType
 from pyezvizapi.exceptions import HTTPError, PyEzvizError
 
 from homeassistant.components.switch import (
@@ -23,81 +23,67 @@ from .entity import EzvizEntity
 class EzvizSwitchEntityDescription(SwitchEntityDescription):
     """Describe a EZVIZ switch."""
 
-    supported_ext: str | None
-
 
 SWITCH_TYPES: dict[int, EzvizSwitchEntityDescription] = {
     3: EzvizSwitchEntityDescription(
         key="3",
         translation_key="status_light",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=None,
     ),
     7: EzvizSwitchEntityDescription(
         key="7",
         translation_key="privacy",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportPtzPrivacy.value),
     ),
     10: EzvizSwitchEntityDescription(
         key="10",
         translation_key="infrared_light",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportCloseInfraredLight.value),
     ),
     21: EzvizSwitchEntityDescription(
         key="21",
         translation_key="sleep",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportSleep.value),
     ),
     22: EzvizSwitchEntityDescription(
         key="22",
         translation_key="audio",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportAudioOnoff.value),
     ),
     25: EzvizSwitchEntityDescription(
         key="25",
         translation_key="motion_tracking",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportIntelligentTrack.value),
     ),
     29: EzvizSwitchEntityDescription(
         key="29",
         translation_key="all_day_video_recording",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportFullDayRecord.value),
     ),
     32: EzvizSwitchEntityDescription(
         key="32",
         translation_key="auto_sleep",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportAutoSleep.value),
     ),
     301: EzvizSwitchEntityDescription(
         key="301",
         translation_key="flicker_light_on_movement",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportActiveDefense.value),
     ),
     305: EzvizSwitchEntityDescription(
         key="305",
         translation_key="pir_motion_activated_light",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportLightRelate.value),
     ),
     306: EzvizSwitchEntityDescription(
         key="306",
         translation_key="tamper_alarm",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportTamperAlarm.value),
     ),
     650: EzvizSwitchEntityDescription(
         key="650",
         translation_key="follow_movement",
         device_class=SwitchDeviceClass.SWITCH,
-        supported_ext=str(SupportExt.SupportTracking.value),
     ),
 }
 
@@ -115,9 +101,6 @@ async def async_setup_entry(
         for camera in coordinator.data
         for switch_number in coordinator.data[camera]["switches"]
         if switch_number in SWITCH_TYPES
-        if SWITCH_TYPES[switch_number].supported_ext
-        in coordinator.data[camera]["supportExt"]
-        or SWITCH_TYPES[switch_number].supported_ext is None
     )
 
 
