@@ -9,7 +9,7 @@
   "iot_class": "cloud_polling",
   "loggers": ["paho_mqtt", "pyezvizapi"],
   "requirements": [
-    "pyezvizapi @ git+https://github.com/liuzexier/pyEzvizApiCN.git@main"
+    "pyezvizapi @ git+https://github.com/liuzexier/pyEzvizApiCN.git@v1.0.4.9-cn2"
   ],
   "version": "0.1.0"
 }
