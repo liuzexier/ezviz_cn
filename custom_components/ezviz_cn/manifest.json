@@ -8,8 +8,6 @@
   "issue_tracker": "https://github.com/liuzexier/ezviz_cn/issues",
   "iot_class": "cloud_polling",
   "loggers": ["paho_mqtt", "pyezvizapi"],
-  "requirements": [
-    "pyezvizapi @ git+https://github.com/liuzexier/pyEzvizApiCN.git@v1.0.4.9-cn2"
-  ],
-  "version": "0.0.9"
+  "requirements": ["paho-mqtt", "pycryptodome", "requests"],
+  "version": "0.0.10"
 }
