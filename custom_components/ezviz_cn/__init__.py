@@ -1,12 +1,11 @@
 """Support for EZVIZ camera."""
 
 import logging
-from pathlib import Path
 import sys
 
-_INTEGRATION_DIR = str(Path(__file__).resolve().parent)
-if _INTEGRATION_DIR not in sys.path:
-    sys.path.insert(0, _INTEGRATION_DIR)
+from . import pyezvizapi as _vendored_pyezvizapi
+
+sys.modules["pyezvizapi"] = _vendored_pyezvizapi
 
 from pyezvizapi.client import EzvizClient
 from pyezvizapi.exceptions import HTTPError, InvalidURL, PyEzvizError
