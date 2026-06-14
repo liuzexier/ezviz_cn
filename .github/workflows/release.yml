@@ -13,11 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.ref_name }}
-        run: |
-          gh release view "$TAG_NAME" >/dev/null 2>&1 || \
-            gh release create "$TAG_NAME" \
-              --title "$TAG_NAME" \
-              --notes "Release $TAG_NAME"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: Release ${{ github.ref_name }}
