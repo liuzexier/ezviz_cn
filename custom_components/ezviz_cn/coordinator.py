@@ -14,7 +14,7 @@ from pyezvizapi.exceptions import (
 )
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_URL
+from homeassistant.const import CONF_PASSWORD, CONF_URL, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -52,7 +52,13 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_refresh_login_token(self) -> None:
         """Refresh the EZVIZ session token and persist it on the config entry."""
-        token = await self.hass.async_add_executor_job(self.ezviz_client.login)
+        try:
+            token = await self.hass.async_add_executor_job(self.ezviz_client.login)
+        except PyEzvizError as err:
+            if not self.config_entry.data.get(CONF_PASSWORD):
+                raise ConfigEntryAuthFailed from err
+            raise
+
         session_id = token.get(CONF_SESSION_ID)
         refresh_session_id = token.get(CONF_RFSESSION_ID)
         if not session_id or not refresh_session_id:
@@ -63,6 +69,8 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
             CONF_SESSION_ID: session_id,
             CONF_RFSESSION_ID: refresh_session_id,
             CONF_URL: token.get("api_url", self.config_entry.data.get(CONF_URL)),
+            CONF_USERNAME: self.config_entry.data.get(CONF_USERNAME),
+            CONF_PASSWORD: self.config_entry.data.get(CONF_PASSWORD),
         }
         self.hass.config_entries.async_update_entry(self.config_entry, data=data)
 
@@ -74,12 +82,23 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
                     return await self.hass.async_add_executor_job(
                         self.ezviz_client.load_cameras
                     )
-                except (InvalidURL, HTTPError, PyEzvizError):
+                except (InvalidURL, HTTPError, PyEzvizError) as error:
                     _LOGGER.debug("Refreshing EZVIZ token after failed update")
-                    await self._async_refresh_login_token()
-                    return await self.hass.async_add_executor_job(
-                        self.ezviz_client.load_cameras
-                    )
+                    try:
+                        await self._async_refresh_login_token()
+                        return await self.hass.async_add_executor_job(
+                            self.ezviz_client.load_cameras
+                        )
+                    except (InvalidURL, HTTPError, PyEzvizError) as retry_error:
+                        if self.data:
+                            _LOGGER.warning(
+                                "Keeping previous EZVIZ data after API error: %s",
+                                retry_error or error,
+                            )
+                            return self.data
+                        raise UpdateFailed(
+                            f"Invalid response from API: {retry_error or error}"
+                        ) from retry_error
 
         except (EzvizAuthTokenExpired, EzvizAuthVerificationCode) as error:
             raise ConfigEntryAuthFailed from error

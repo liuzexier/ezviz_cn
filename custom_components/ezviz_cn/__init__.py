@@ -10,7 +10,14 @@ sys.modules["pyezvizapi"] = _vendored_pyezvizapi
 from pyezvizapi.client import EzvizClient
 from pyezvizapi.exceptions import HTTPError, InvalidURL, PyEzvizError
 
-from homeassistant.const import CONF_TIMEOUT, CONF_TYPE, CONF_URL, Platform
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_TYPE,
+    CONF_URL,
+    CONF_USERNAME,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
@@ -67,6 +74,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: EzvizConfigEntry) -> boo
             raise ConfigEntryAuthFailed
 
         ezviz_client = EzvizClient(
+            account=entry.data.get(CONF_USERNAME) or entry.title,
+            password=entry.data.get(CONF_PASSWORD),
+            url=entry.data.get(CONF_URL),
             token={
                 CONF_SESSION_ID: entry.data.get(CONF_SESSION_ID),
                 CONF_RFSESSION_ID: entry.data.get(CONF_RFSESSION_ID),

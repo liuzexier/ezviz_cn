@@ -74,6 +74,8 @@ def _validate_and_create_auth(data: dict) -> dict[str, Any]:
         CONF_SESSION_ID: ezviz_token[CONF_SESSION_ID],
         CONF_RFSESSION_ID: ezviz_token[CONF_RFSESSION_ID],
         CONF_URL: ezviz_token["api_url"],
+        CONF_USERNAME: data[CONF_USERNAME],
+        CONF_PASSWORD: data[CONF_PASSWORD],
         CONF_TYPE: ATTR_TYPE_CLOUD,
     }
 
