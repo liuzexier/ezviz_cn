@@ -40,7 +40,7 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
         """Initialize global EZVIZ data updater."""
         self.ezviz_client = api
         self._api_timeout = api_timeout
-        update_interval = timedelta(seconds=30)
+        update_interval = timedelta(minutes=5)
 
         super().__init__(
             hass,
@@ -74,31 +74,40 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
         }
         self.hass.config_entries.async_update_entry(self.config_entry, data=data)
 
+    async def _async_load_cameras(self, *, refresh: bool = True) -> dict:
+        """Load cameras from the API."""
+        return await self.hass.async_add_executor_job(
+            self.ezviz_client.load_cameras, refresh
+        )
+
     async def _async_update_data(self) -> dict:
         """Fetch data from EZVIZ."""
         try:
             async with asyncio.timeout(self._api_timeout):
                 try:
-                    return await self.hass.async_add_executor_job(
-                        self.ezviz_client.load_cameras
-                    )
+                    return await self._async_load_cameras(refresh=True)
                 except (InvalidURL, HTTPError, PyEzvizError) as error:
                     _LOGGER.debug("Refreshing EZVIZ token after failed update")
                     try:
                         await self._async_refresh_login_token()
-                        return await self.hass.async_add_executor_job(
-                            self.ezviz_client.load_cameras
-                        )
+                        return await self._async_load_cameras(refresh=True)
                     except (InvalidURL, HTTPError, PyEzvizError) as retry_error:
-                        if self.data:
+                        try:
                             _LOGGER.warning(
-                                "Keeping previous EZVIZ data after API error: %s",
+                                "EZVIZ detail refresh failed, loading basic device data: %s",
                                 retry_error or error,
                             )
-                            return self.data
-                        raise UpdateFailed(
-                            f"Invalid response from API: {retry_error or error}"
-                        ) from retry_error
+                            return await self._async_load_cameras(refresh=False)
+                        except (InvalidURL, HTTPError, PyEzvizError) as fallback_error:
+                            if self.data:
+                                _LOGGER.warning(
+                                    "Keeping previous EZVIZ data after API error: %s",
+                                    fallback_error,
+                                )
+                                return self.data
+                            raise UpdateFailed(
+                                f"Invalid response from API: {fallback_error}"
+                            ) from fallback_error
 
         except (EzvizAuthTokenExpired, EzvizAuthVerificationCode) as error:
             raise ConfigEntryAuthFailed from error
