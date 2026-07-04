@@ -74,7 +74,7 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
         }
         self.hass.config_entries.async_update_entry(self.config_entry, data=data)
 
-    async def _async_load_cameras(self, *, refresh: bool = True) -> dict:
+    async def _async_load_cameras(self, *, refresh: bool = False) -> dict:
         """Load cameras from the API."""
         return await self.hass.async_add_executor_job(
             self.ezviz_client.load_cameras, refresh
@@ -85,29 +85,22 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             async with asyncio.timeout(self._api_timeout):
                 try:
-                    return await self._async_load_cameras(refresh=True)
+                    return await self._async_load_cameras()
                 except (InvalidURL, HTTPError, PyEzvizError) as error:
                     _LOGGER.debug("Refreshing EZVIZ token after failed update")
                     try:
                         await self._async_refresh_login_token()
-                        return await self._async_load_cameras(refresh=True)
+                        return await self._async_load_cameras()
                     except (InvalidURL, HTTPError, PyEzvizError) as retry_error:
-                        try:
+                        if self.data:
                             _LOGGER.warning(
-                                "EZVIZ detail refresh failed, loading basic device data: %s",
+                                "Keeping previous EZVIZ data after API error: %s",
                                 retry_error or error,
                             )
-                            return await self._async_load_cameras(refresh=False)
-                        except (InvalidURL, HTTPError, PyEzvizError) as fallback_error:
-                            if self.data:
-                                _LOGGER.warning(
-                                    "Keeping previous EZVIZ data after API error: %s",
-                                    fallback_error,
-                                )
-                                return self.data
-                            raise UpdateFailed(
-                                f"Invalid response from API: {fallback_error}"
-                            ) from fallback_error
+                            return self.data
+                        raise UpdateFailed(
+                            f"Invalid response from API: {retry_error}"
+                        ) from retry_error
 
         except (EzvizAuthTokenExpired, EzvizAuthVerificationCode) as error:
             raise ConfigEntryAuthFailed from error
