@@ -471,8 +471,12 @@ def _post_login_response(
         req.raise_for_status()
     except requests.ConnectionError as err:
         raise InvalidURL("A Invalid URL or Proxy error occurred") from err
+    except requests.Timeout as err:
+        raise PyEzvizError(f"Login request timed out for {api_url}") from err
     except requests.HTTPError as err:
-        raise HTTPError from err
+        raise HTTPError(
+            f"HTTP {err.response.status_code} from https://{api_url}"
+        ) from err
     finally:
         if login_headers is not None:
             session.headers.clear()
@@ -629,6 +633,10 @@ class EzvizClient:
                 timeout=self._timeout,
             )
             req.raise_for_status()
+        except requests.ConnectionError as err:
+            raise InvalidURL(f"Unable to connect to {url}") from err
+        except requests.Timeout as err:
+            raise PyEzvizError(f"Request timed out for {url}") from err
         except requests.HTTPError as err:
             if (
                 retry_401
@@ -636,7 +644,7 @@ class EzvizClient:
                 and err.response.status_code == 401
             ):
                 if max_retries >= MAX_RETRIES:
-                    raise HTTPError from err
+                    raise HTTPError(f"HTTP 401 from {url}") from err
                 # Re-login and retry once
                 self.login()
                 return self._http_request(
@@ -648,7 +656,8 @@ class EzvizClient:
                     retry_401=retry_401,
                     max_retries=max_retries + 1,
                 )
-            raise HTTPError from err
+            status = err.response.status_code if err.response is not None else "error"
+            raise HTTPError(f"HTTP {status} from {url}") from err
         else:
             if _LOGGER.isEnabledFor(logging.DEBUG):
                 content_length = req.headers.get("Content-Length")
@@ -807,6 +816,10 @@ class EzvizClient:
         try:
             req = self._session.send(request=prepared, timeout=self._timeout)
             req.raise_for_status()
+        except requests.ConnectionError as err:
+            raise InvalidURL(f"Unable to connect to {prepared.url}") from err
+        except requests.Timeout as err:
+            raise PyEzvizError(f"Request timed out for {prepared.url}") from err
         except requests.HTTPError as err:
             if (
                 retry_401
@@ -814,12 +827,13 @@ class EzvizClient:
                 and err.response.status_code == 401
             ):
                 if max_retries >= MAX_RETRIES:
-                    raise HTTPError from err
+                    raise HTTPError(f"HTTP 401 from {prepared.url}") from err
                 self.login()
                 return self._send_prepared(
                     prepared, retry_401=retry_401, max_retries=max_retries + 1
                 )
-            raise HTTPError from err
+            status = err.response.status_code if err.response is not None else "error"
+            raise HTTPError(f"HTTP {status} from {prepared.url}") from err
         return req
 
     # ---- Small helpers --------------------------------------------------------------
@@ -3389,9 +3403,16 @@ class EzvizClient:
         session_id = self._token.get("session_id")
         refresh_session_id = self._token.get("rf_session_id")
         if session_id and refresh_session_id:
+            api_url = self._token["api_url"]
+            refresh_url = f"https://{api_url}{API_ENDPOINT_REFRESH_SESSION_ID}"
+            refresh_headers = _login_headers_for_api_url(api_url)
+            original_headers = self._session.headers.copy()
             try:
+                if refresh_headers is not None:
+                    self._session.headers.clear()
+                    self._session.headers.update(refresh_headers)
                 req = self._session.put(
-                    url=f"https://{self._token['api_url']}{API_ENDPOINT_REFRESH_SESSION_ID}",
+                    url=refresh_url,
                     data={
                         "refreshSessionId": refresh_session_id,
                         "featureCode": FEATURE_CODE,
@@ -3400,8 +3421,29 @@ class EzvizClient:
                 )
                 req.raise_for_status()
 
+            except requests.ConnectionError as err:
+                raise InvalidURL(f"Unable to connect to {refresh_url}") from err
+            except requests.Timeout as err:
+                raise PyEzvizError(
+                    f"Session refresh timed out for {api_url}"
+                ) from err
             except requests.HTTPError as err:
-                raise HTTPError from err
+                if (
+                    err.response is not None
+                    and err.response.status_code in (401, 403)
+                    and self.account
+                    and self.password
+                ):
+                    refresh_headers = None
+                    return self._login_after_refresh_failure(sms_code)
+                status = (
+                    err.response.status_code if err.response is not None else "error"
+                )
+                raise HTTPError(f"HTTP {status} from {refresh_url}") from err
+            finally:
+                if refresh_headers is not None:
+                    self._session.headers.clear()
+                    self._session.headers.update(original_headers)
 
             try:
                 json_result = req.json()
@@ -3415,12 +3457,14 @@ class EzvizClient:
                 ) from err
 
             if json_result["meta"]["code"] == 200:
-                self._session.headers["sessionId"] = json_result["sessionInfo"][
-                    "sessionId"
-                ]
-                self._token["session_id"] = str(json_result["sessionInfo"]["sessionId"])
+                session_info = json_result.get("sessionInfo") or json_result.get(
+                    "loginSession"
+                )
+                self._session.headers["sessionId"] = session_info["sessionId"]
+                self._token["session_id"] = str(session_info["sessionId"])
                 self._token["rf_session_id"] = str(
-                    json_result["sessionInfo"]["refreshSessionId"]
+                    session_info.get("refreshSessionId")
+                    or session_info["rfSessionId"]
                 )
                 self._token["feature_code"] = FEATURE_CODE
 
@@ -3429,15 +3473,9 @@ class EzvizClient:
 
                 return cast(dict[Any, Any], self._token)
 
-            if json_result["meta"]["code"] == 403:
+            if json_result["meta"]["code"] in (401, 403):
                 if self.account and self.password:
-                    self._token = {
-                        "session_id": None,
-                        "rf_session_id": None,
-                        "username": None,
-                        "api_url": self._token["api_url"],
-                    }
-                    return self.login()
+                    return self._login_after_refresh_failure(sms_code)
 
                 raise EzvizAuthTokenExpired(
                     f"Token expired, Login with username and password required: {req.text}"
@@ -3449,6 +3487,20 @@ class EzvizClient:
             return self._login(sms_code)
 
         raise PyEzvizError("Login with account and password required")
+
+    def _login_after_refresh_failure(
+        self, sms_code: str | int | None = None
+    ) -> JsonDict:
+        """Fall back to password login when a refresh token is rejected."""
+        api_url = self._token["api_url"]
+        self._token = {
+            "session_id": None,
+            "rf_session_id": None,
+            "username": None,
+            "api_url": api_url,
+        }
+        self._session.headers.pop("sessionId", None)
+        return self._login(sms_code)
 
     def logout(self) -> bool:
         """Close Ezviz session and remove login session from ezviz servers."""

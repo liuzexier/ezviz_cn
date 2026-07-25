@@ -50,25 +50,27 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=update_interval,
         )
 
-    async def _async_refresh_login_token(self) -> None:
-        """Refresh the EZVIZ session token and persist it on the config entry."""
-        try:
-            token = await self.hass.async_add_executor_job(self.ezviz_client.login)
-        except PyEzvizError as err:
-            if not self.config_entry.data.get(CONF_PASSWORD):
-                raise ConfigEntryAuthFailed from err
-            raise
-
+    def _persist_login_token(self) -> None:
+        """Persist a token refreshed transparently by the API client."""
+        token = self.ezviz_client.export_token()
         session_id = token.get(CONF_SESSION_ID)
         refresh_session_id = token.get(CONF_RFSESSION_ID)
         if not session_id or not refresh_session_id:
+            return
+
+        api_url = token.get("api_url", self.config_entry.data.get(CONF_URL))
+        if (
+            session_id == self.config_entry.data.get(CONF_SESSION_ID)
+            and refresh_session_id == self.config_entry.data.get(CONF_RFSESSION_ID)
+            and api_url == self.config_entry.data.get(CONF_URL)
+        ):
             return
 
         data = {
             **self.config_entry.data,
             CONF_SESSION_ID: session_id,
             CONF_RFSESSION_ID: refresh_session_id,
-            CONF_URL: token.get("api_url", self.config_entry.data.get(CONF_URL)),
+            CONF_URL: api_url,
             CONF_USERNAME: self.config_entry.data.get(CONF_USERNAME),
             CONF_PASSWORD: self.config_entry.data.get(CONF_PASSWORD),
         }
@@ -85,25 +87,30 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             async with asyncio.timeout(self._api_timeout):
                 try:
-                    return await self._async_load_cameras()
+                    cameras = await self._async_load_cameras()
+                except (EzvizAuthTokenExpired, EzvizAuthVerificationCode) as error:
+                    raise ConfigEntryAuthFailed from error
                 except (InvalidURL, HTTPError, PyEzvizError) as error:
-                    _LOGGER.debug("Refreshing EZVIZ token after failed update")
-                    try:
-                        await self._async_refresh_login_token()
-                        return await self._async_load_cameras()
-                    except (InvalidURL, HTTPError, PyEzvizError) as retry_error:
-                        if self.data:
-                            _LOGGER.warning(
-                                "Keeping previous EZVIZ data after API error: %s",
-                                retry_error or error,
-                            )
-                            return self.data
-                        raise UpdateFailed(
-                            f"Invalid response from API: {retry_error}"
-                        ) from retry_error
+                    if self.data is not None:
+                        _LOGGER.warning(
+                            "Keeping previous EZVIZ data after API error: %s",
+                            _error_text(error),
+                        )
+                        return self.data
+                    raise UpdateFailed(
+                        f"Invalid response from API: {_error_text(error)}"
+                    ) from error
 
-        except (EzvizAuthTokenExpired, EzvizAuthVerificationCode) as error:
-            raise ConfigEntryAuthFailed from error
+                self._persist_login_token()
+                return cameras
 
-        except (InvalidURL, HTTPError, PyEzvizError) as error:
-            raise UpdateFailed(f"Invalid response from API: {error}") from error
+        except TimeoutError as error:
+            if self.data is not None:
+                _LOGGER.warning("Keeping previous EZVIZ data after API timeout")
+                return self.data
+            raise UpdateFailed("EZVIZ API request timed out") from error
+
+
+def _error_text(error: Exception) -> str:
+    """Return a useful message even for exceptions without text."""
+    return str(error).strip() or error.__class__.__name__
