@@ -9,5 +9,5 @@
   "iot_class": "cloud_polling",
   "loggers": ["paho_mqtt", "pyezvizapi"],
   "requirements": ["paho-mqtt", "pycryptodome", "requests"],
-  "version": "0.0.19"
+  "version": "0.0.20"
 }

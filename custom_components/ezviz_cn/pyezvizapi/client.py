@@ -3428,12 +3428,7 @@ class EzvizClient:
                     f"Session refresh timed out for {api_url}"
                 ) from err
             except requests.HTTPError as err:
-                if (
-                    err.response is not None
-                    and err.response.status_code in (401, 403)
-                    and self.account
-                    and self.password
-                ):
+                if self.account and self.password:
                     refresh_headers = None
                     return self._login_after_refresh_failure(sms_code)
                 status = (
@@ -3449,6 +3444,8 @@ class EzvizClient:
                 json_result = req.json()
 
             except ValueError as err:
+                if self.account and self.password:
+                    return self._login_after_refresh_failure(sms_code)
                 raise PyEzvizError(
                     "Impossible to decode response: "
                     + str(err)
@@ -3473,10 +3470,10 @@ class EzvizClient:
 
                 return cast(dict[Any, Any], self._token)
 
-            if json_result["meta"]["code"] in (401, 403):
-                if self.account and self.password:
-                    return self._login_after_refresh_failure(sms_code)
+            if self.account and self.password:
+                return self._login_after_refresh_failure(sms_code)
 
+            if json_result["meta"]["code"] in (401, 403):
                 raise EzvizAuthTokenExpired(
                     f"Token expired, Login with username and password required: {req.text}"
                 )
