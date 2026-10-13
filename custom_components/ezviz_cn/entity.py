@@ -46,7 +46,7 @@ class EzvizEntity(CoordinatorEntity[EzvizDataUpdateCoordinator], Entity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self.data["status"] != 2
+        return super().available and self.data["status"] != 2
 
 
 class EzvizBaseEntity(Entity):
