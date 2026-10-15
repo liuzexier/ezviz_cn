@@ -35,11 +35,6 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
         translation_key="seconds_last_trigger",
         entity_registry_enabled_default=False,
     ),
-    "last_alarm_pic": SensorEntityDescription(
-        key="last_alarm_pic",
-        translation_key="last_alarm_pic",
-        entity_registry_enabled_default=False,
-    ),
     "supported_channels": SensorEntityDescription(
         key="supported_channels",
         translation_key="supported_channels",
@@ -70,7 +65,6 @@ SENSOR_NAMES = {
     "alarm_sound_mod": "报警声模式",
     "last_alarm_time": "最近报警时间",
     "Seconds_Last_Trigger": "距离上次触发秒数",
-    "last_alarm_pic": "最近报警图片",
     "supported_channels": "通道数",
     "local_ip": "本地 IP",
     "wan_ip": "公网 IP",

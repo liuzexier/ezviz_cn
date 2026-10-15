@@ -119,9 +119,6 @@
             "alarm_sound_mod": {
                 "name": "报警声模式"
             },
-            "last_alarm_pic": {
-                "name": "最近报警图片地址"
-            },
             "last_alarm_time": {
                 "name": "最近报警时间"
             },
